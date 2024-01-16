@@ -50,6 +50,7 @@ def signup():
 # Login Route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    print(request.form)
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -63,12 +64,11 @@ def login():
         cursor.close()
         conn.close()
 
-        if user:
+        if user and 'Admin' in username:
             # User is authenticated
-            return redirect('/')
-
-            time.sleep(3)
-
+            return redirect('/admin')
+        elif user:
+            return redirect('/user')
         else:
             # Invalid credentials
             return 'Login Failed'
@@ -78,6 +78,7 @@ def login():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     users = []
+    print(request.form)
     if request.method == 'POST':
         username_search = request.form['username']
 
@@ -85,12 +86,15 @@ def search():
         cursor = conn.cursor(dictionary=True)
 
         query = "SELECT * FROM users WHERE username LIKE '%"+username_search+"%';"
+        print(query)
+
         cursor.execute(query)
 
         users = cursor.fetchall()
 
         cursor.close()
         conn.close()
+
 
     return render_template('search.html', users=users)
 
