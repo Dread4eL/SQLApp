@@ -58,7 +58,7 @@ def login():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM users WHERE username= '"+username+"' AND password= '"+password+"' ;")
+        cursor.execute("SELECT * FROM users WHERE username= '"+username+"' AND password= '"+password+"' ;",multi=True)
         user = cursor.fetchall()
 
         cursor.close()
@@ -75,6 +75,36 @@ def login():
 
     return render_template('login.html')
 
+
+@app.route('/login_safe', methods=['GET', 'POST'])
+def login_safe():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+
+        # Using a parameterized query
+        query = "SELECT * FROM users WHERE username= ? AND password= ?"
+        cursor.execute(query, (username, password))
+        user = cursor.fetchall()
+        print(user)
+        cursor.close()
+        conn.close()
+
+        if user and 'Admin' in username:
+            # User is authenticated
+            return redirect('/admin')
+        elif user:
+            return redirect('/user')
+        else:
+            # Invalid credentials
+            return 'Login Failed'
+
+    return render_template('login_safe.html')
+
+
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     users = []
@@ -88,7 +118,7 @@ def search():
         query = "SELECT * FROM users WHERE username LIKE '%"+username_search+"%';"
         print(query)
 
-        cursor.execute(query)
+        cursor.execute(query,multi=True)
 
         users = cursor.fetchall()
 
