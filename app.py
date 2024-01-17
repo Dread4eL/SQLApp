@@ -6,7 +6,7 @@ app = Flask(__name__,template_folder='./templates')
 
 # Database Configuration
 db_config = {
-    'user': 'root',        # Your MySQL username
+    'user': 'user',        # Your MySQL username
     'password': 'pouet',        # Your MySQL password
     'host': 'localhost',
     'database': 'testdb'   # Your database name
@@ -50,6 +50,7 @@ def signup():
 # Login Route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    msg=''
     print(request.form)
     if request.method == 'POST':
         username = request.form['username']
@@ -57,53 +58,61 @@ def login():
 
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
-
-        cursor.execute("SELECT * FROM users WHERE username= '"+username+"' AND password= '"+password+"' ;",multi=True)
+        query ="SELECT * FROM users WHERE username= '"+username+"' AND password= '"+password+"' ;"
+        print(query)
+        cursor.execute(query)
         user = cursor.fetchall()
-
+        print(user)
         cursor.close()
         conn.close()
 
-        if user and 'Admin' in username:
+        if user and user[0]['isModerator']==1:
             # User is authenticated
             return redirect('/admin')
         elif user:
             return redirect('/user')
         else:
             # Invalid credentials
-            return 'Login Failed'
+            print("Invalid Credentials")
+            return render_template('login.html',msg='Login Failed, Invalid Credentials !!')
 
-    return render_template('login.html')
+    return render_template('login.html',msg=msg)
 
 
 @app.route('/login_safe', methods=['GET', 'POST'])
 def login_safe():
+    msg =''
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        List_sqli = ["'",'"','%','-']
+        for let in username:
+            if let in List_sqli:
+                return render_template('login_safe.html',msg = 'I do not want SQLi !!, wrong characters')
+        for let in password:
+            if let in List_sqli:
+                return render_template('login_safe.html',msg = 'I do not want SQLi !!, wrong characters')
 
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
-
-        # Using a parameterized query
-        query = "SELECT * FROM users WHERE username= ? AND password= ?"
+        query = "SELECT * FROM users WHERE username= %s AND password=%s"
         cursor.execute(query, (username, password))
         user = cursor.fetchall()
         print(user)
         cursor.close()
         conn.close()
 
-        if user and 'Admin' in username:
+        if user and user[0]['isModerator']==1:
             # User is authenticated
             return redirect('/admin')
         elif user:
             return redirect('/user')
         else:
             # Invalid credentials
-            return 'Login Failed'
+            print("Invalid Credentials")
+            return render_template('login.html',msg='Login Failed, Invalid Credentials !!')
 
     return render_template('login_safe.html')
-
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -118,7 +127,7 @@ def search():
         query = "SELECT * FROM users WHERE username LIKE '%"+username_search+"%';"
         print(query)
 
-        cursor.execute(query,multi=True)
+        cursor.execute(query)
 
         users = cursor.fetchall()
 
@@ -195,7 +204,7 @@ def admin_search():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         query = "SELECT * FROM users WHERE username LIKE '%"+username_search+"%';"
-        cursor.execute(query)
+        cursor.execute(query,multi=True)
         users = cursor.fetchall()
         cursor.close()
         conn.close()
